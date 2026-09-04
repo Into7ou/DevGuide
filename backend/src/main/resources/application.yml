@@ -1,0 +1,102 @@
+server:
+  port: ${SERVER_PORT:18080}
+  servlet:
+    encoding:
+      charset: UTF-8
+      force-response: true
+
+spring:
+  application:
+    name: devguide
+
+  datasource:
+    url: jdbc:postgresql://localhost:${POSTGRES_PORT:15432}/${POSTGRES_DB:techstack}
+    username: ${POSTGRES_USER:techstack}
+    password: ${POSTGRES_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+  # Flyway 基线：兼容 Spring AI 已自动创建的 vector_store 表（非 Flyway 管理）
+  flyway:
+    baseline-on-migrate: true
+    baseline-version: 0
+
+  # GitHub OAuth2 登录
+  security:
+    oauth2:
+      client:
+        registration:
+          github:
+            client-id: ${GITHUB_OAUTH_CLIENT_ID:}
+            client-secret: ${GITHUB_OAUTH_CLIENT_SECRET:}
+            scope:
+              - read:user
+
+  ai:
+    # DeepSeek 对话模型（embedding 关闭，DeepSeek 无 embedding）
+    deepseek:
+      api-key: ${DEEPSEEK_API_KEY}
+      base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+      chat:
+        options:
+          model: ${DEEPSEEK_MODEL:deepseek-chat}
+      embedding:
+        enabled: false
+
+    # 阿里云通义（DashScope）embedding
+    dashscope:
+      api-key: ${DASHSCOPE_API_KEY}
+      embedding:
+        options:
+          model: ${DASHSCOPE_EMBEDDING_MODEL:text-embedding-v2}
+
+    # PGvector 向量存储（M3 正式启用，M1 先就绪）
+    vectorstore:
+      pgvector:
+        initialize-schema: true
+        dimensions: 1536
+        index-type: hnsw
+        distance-type: cosine_distance
+
+    # Tavily 联网搜索（M6 web 搜索工具；api-key 从环境变量 TAVILY_SEARCH_API_KEY 读取）
+    alibaba:
+      toolcalling:
+        tavilysearch:
+          api-key: ${TAVILY_SEARCH_API_KEY:}
+          enabled: true
+
+    # MCP Server（暴露 @McpTool 工具，SSE 端点 /sse）
+    mcp:
+      server:
+        name: techstack-github-mcp
+        version: 0.0.1
+        type: SYNC
+        protocol: SSE
+      # MCP Client：默认禁用。
+      # 说明：同进程自连自身 SSE 端点在 Spring 启动期会时序冲突（Web 容器未就绪时客户端已初始化）。
+      # 演示「MCP Client 连接外部 MCP Server」时，改为 enabled=true 并配置 stdio/sse connections。
+      client:
+        enabled: false
+
+# MyBatis-Plus
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    banner: false
+
+# GitHub API（应用级 Token 仅搜公开仓库，不硬编码）
+github:
+  api-base-url: https://api.github.com
+  token: ${GITHUB_TOKEN:}
+
+# 业务自定义配置
+app:
+  rag:
+    max-web-rounds: ${RAG_MAX_WEB_ROUNDS:2}
+    max-pages-per-round: ${RAG_MAX_PAGES_PER_ROUND:3}
+  cache:
+    top10-ttl: 24h
+  # 前端地址：OAuth 登录成功后重定向目标（生产可改为真实域名）
+  frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
+  security:
+    token-cipher-key: ${TOKEN_CIPHER_KEY:}

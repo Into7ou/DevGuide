@@ -1,0 +1,36 @@
+# ===== 密钥与本地配置（严禁提交）=====
+.env
+docs/隐私文档/
+*.local
+
+# ===== 本地参考仓库与 Agent 工具资源 =====
+# spring-ai-alibaba-examples 是仅供开发参考的独立 Git checkout；不要嵌套提交。
+spring-ai-alibaba-examples/
+# 本机安装的 UI/UX skill 数据；项目设计结论保存在 design-system/。
+.dsh/
+
+# ===== Java / Maven =====
+backend/target/
+.m2/
+maven-settings.xml
+*.class
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+org/
+
+# ===== Node / 前端 =====
+node_modules/
+.npm-cache/
+frontend/dist/
+frontend/.vite/
+npm-debug.log*
+
+# ===== IDE =====
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# ===== 日志 =====
+*.log
+logs/
