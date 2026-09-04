@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verify;
 
 import java.util.List;
 
@@ -65,5 +66,33 @@ class TechStackServiceTest {
         when(discoveryService.discover(anyString())).thenThrow(new DiscoveryUnavailableException());
         assertThatThrownBy(() -> service.getOverview("foo")).isInstanceOf(DiscoveryUnavailableException.class);
         verifyNoInteractions(githubService);
+    }
+
+    @Test
+    void showcaseOverviewReturnsExistingAliasWithoutDiscovery() {
+        TechStack stack = new TechStack();
+        stack.setName("Spring Boot");
+        stack.setGithubSearchQuery("topic:spring-boot");
+        when(mapper.findByNameIgnoreCase("SpringBoot")).thenReturn(null);
+        when(mapper.findByAlias("SpringBoot")).thenReturn(stack);
+        when(githubService.topRepos("topic:spring-boot")).thenReturn(List.of());
+
+        TechStackOverviewDto overview = service.getShowcaseOverview("SpringBoot");
+
+        assertThat(overview.name()).isEqualTo("Spring Boot");
+        verifyNoInteractions(discoveryService);
+    }
+
+    @Test
+    void showcaseOverviewRejectsUnknownWithoutDiscoveryOrGithub() {
+        when(mapper.findByNameIgnoreCase("unknown")).thenReturn(null);
+        when(mapper.findByAlias("unknown")).thenReturn(null);
+
+        assertThatThrownBy(() -> service.getShowcaseOverview("unknown"))
+                .isInstanceOf(ShowcaseNotFoundException.class);
+
+        verify(mapper).findByNameIgnoreCase("unknown");
+        verify(mapper).findByAlias("unknown");
+        verifyNoInteractions(discoveryService, githubService);
     }
 }

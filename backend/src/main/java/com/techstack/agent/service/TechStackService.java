@@ -2,6 +2,7 @@ package com.techstack.agent.service;
 
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -27,13 +28,22 @@ public class TechStackService {
     private final GithubService githubService;
     private final ObjectMapper objectMapper;
     private final TechStackDiscoveryService discoveryService;
+    private final GenerationAdmissionPolicy admissionPolicy;
 
+    @Autowired
     public TechStackService(TechStackMapper techStackMapper, GithubService githubService,
-                            ObjectMapper objectMapper, TechStackDiscoveryService discoveryService) {
+                            ObjectMapper objectMapper, TechStackDiscoveryService discoveryService,
+                            GenerationAdmissionPolicy admissionPolicy) {
         this.techStackMapper = techStackMapper;
         this.githubService = githubService;
         this.objectMapper = objectMapper;
         this.discoveryService = discoveryService;
+        this.admissionPolicy = admissionPolicy;
+    }
+
+    TechStackService(TechStackMapper techStackMapper, GithubService githubService,
+                     ObjectMapper objectMapper, TechStackDiscoveryService discoveryService) {
+        this(techStackMapper, githubService, objectMapper, discoveryService, (subject, operation) -> () -> { });
     }
 
     public List<TechStackDto> listAll() {
@@ -46,23 +56,50 @@ public class TechStackService {
     }
 
     public TechStackOverviewDto getOverview(String name) {
+        return getOverview(name, "system");
+    }
+
+    public TechStackOverviewDto getOverview(String name, String subject) {
+        String normalized = normalizeName(name);
+        TechStack stack = findExistingStack(normalized);
+
+        if (stack == null) {
+            try (GenerationAdmissionPolicy.Permit ignored = admissionPolicy.acquire(subject,
+                    GenerationAdmissionPolicy.Operation.DYNAMIC_SEARCH)) {
+                return discoverAndUpsert(normalized);
+            }
+        }
+
+        return toOverview(stack);
+    }
+
+    /**
+     * 公开展示查询：只读取已经收录的技术栈，绝不进入动态发现或写库。
+     */
+    public TechStackOverviewDto getShowcaseOverview(String name) {
+        TechStack stack = findExistingStack(normalizeName(name));
+        if (stack == null) {
+            throw new ShowcaseNotFoundException();
+        }
+        return toOverview(stack);
+    }
+
+    private String normalizeName(String name) {
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("name must not be blank");
         }
         if (name.trim().length() > 100 || name.chars().anyMatch(Character::isISOControl)) {
             throw new IllegalArgumentException("技术栈名称不能超过 100 个字符或包含控制字符。");
         }
-        String normalized = TechStackDiscoveryService.normalizeKnownName(name.trim());
+        return TechStackDiscoveryService.normalizeKnownName(name.trim());
+    }
 
+    private TechStack findExistingStack(String normalized) {
         TechStack stack = techStackMapper.findByNameIgnoreCase(normalized);
-        if (stack == null) {
-            stack = techStackMapper.findByAlias(normalized);
-        }
+        return stack == null ? techStackMapper.findByAlias(normalized) : stack;
+    }
 
-        if (stack == null) {
-            return discoverAndUpsert(normalized);
-        }
-
+    private TechStackOverviewDto toOverview(TechStack stack) {
         List<GithubRepoDto> repos = fetchTopRepos(stack);
         List<String> keyPages = parseDocKeyPages(stack.getDocKeyPages());
         return new TechStackOverviewDto(
@@ -81,8 +118,7 @@ public class TechStackService {
             existing = techStackMapper.findByAlias(discovered.canonicalName());
         }
         if (existing != null) {
-            return new TechStackOverviewDto(existing.getName(), existing.getDescription(), existing.getOfficialDocUrl(),
-                    parseDocKeyPages(existing.getDocKeyPages()), existing.getCategory(), fetchTopRepos(existing));
+            return toOverview(existing);
         }
         String query = discovered.githubSearchQuery();
         List<GithubRepoDto> repos = safeTopRepos(query);
@@ -106,7 +142,7 @@ public class TechStackService {
         try {
             return githubService.topRepos(query);
         } catch (Exception e) {
-            log.warn("拉取 GitHub Top10 失败，降级为空列表: {}", query);
+            log.warn("拉取 GitHub Top10 失败，降级为空列表");
             return List.of();
         }
     }
@@ -124,7 +160,7 @@ public class TechStackService {
             return objectMapper.readValue(json, new TypeReference<List<String>>() {
             });
         } catch (JsonProcessingException e) {
-            log.warn("Failed to parse docKeyPages JSON: {}", json, e);
+            log.warn("Failed to parse docKeyPages JSON, errorType={}", e.getClass().getSimpleName());
             return List.of();
         }
     }

@@ -2,6 +2,10 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import LearnPanel from './LearnPanel.vue'
 
+vi.mock('../utils/csrf', () => ({
+  csrfHeaders: vi.fn().mockResolvedValue({ 'X-XSRF-TOKEN': 'test-token' })
+}))
+
 const source = { id: 'S1', title: 'Controller 文档', url: 'https://docs.spring.io/reference',
   excerpt: 'A controller handles requests.', techStacks: ['Spring MVC'], sourceType: 'official', retrievedFrom: 'local' }
 const event = (type, data) => ({ type, data })

@@ -48,7 +48,7 @@ public class WebSearchTools {
                     .toList();
             return toJson(hits);
         } catch (Exception e) {
-            log.warn("联网搜索失败: {}", query, e);
+            log.warn("联网搜索失败，errorType={}", e.getClass().getSimpleName());
             return "联网搜索服务暂不可用，请基于已获取的 GitHub/知识库资料继续作答";
         }
     }
@@ -65,7 +65,7 @@ public class WebSearchTools {
         try {
             return objectMapper.writeValueAsString(value);
         } catch (JsonProcessingException e) {
-            log.warn("工具结果序列化失败", e);
+            log.warn("工具结果序列化失败，errorType={}", e.getClass().getSimpleName());
             return "[]";
         }
     }

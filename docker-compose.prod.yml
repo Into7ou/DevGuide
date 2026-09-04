@@ -1,0 +1,5 @@
+services:
+  backend:
+    image: ghcr.io/into7ou/devguide-backend:${IMAGE_TAG:?Set immutable IMAGE_TAG, for example v0.7.0}
+  frontend:
+    image: ghcr.io/into7ou/devguide-frontend:${IMAGE_TAG:?Set immutable IMAGE_TAG, for example v0.7.0}

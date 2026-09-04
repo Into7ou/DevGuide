@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.Authentication;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -15,6 +16,9 @@ import com.techstack.agent.dto.LearnRequest;
 import com.techstack.agent.dto.RagEvent;
 import com.techstack.agent.service.AgentService;
 import com.techstack.agent.service.MultiAgentService;
+import com.techstack.agent.service.GenerationAdmissionPolicy;
+import com.techstack.agent.service.GenerationAdmissionPolicy.Permit;
+import com.techstack.agent.security.AuthenticatedSubject;
 
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
@@ -30,19 +34,25 @@ public class AgentController {
     private final AgentService agentService;
     private final MultiAgentService multiAgentService;
     private final ObjectMapper objectMapper;
+    private final GenerationAdmissionPolicy admissionPolicy;
 
-    public AgentController(AgentService agentService, MultiAgentService multiAgentService, ObjectMapper objectMapper) {
+    public AgentController(AgentService agentService, MultiAgentService multiAgentService, ObjectMapper objectMapper,
+                           GenerationAdmissionPolicy admissionPolicy) {
         this.agentService = agentService;
         this.multiAgentService = multiAgentService;
         this.objectMapper = objectMapper;
+        this.admissionPolicy = admissionPolicy;
     }
 
     /**
      * 同步接口（单 Agent ReAct）：返回完整回答。
      */
     @PostMapping("/ask")
-    public Map<String, String> ask(@RequestBody LearnRequest request) {
-        return Map.of("answer", agentService.run(buildPrompt(request)));
+    public Map<String, String> ask(@RequestBody LearnRequest request, Authentication authentication) {
+        try (Permit ignored = admissionPolicy.acquire(AuthenticatedSubject.key(authentication),
+                GenerationAdmissionPolicy.Operation.AGENT)) {
+            return Map.of("answer", agentService.run(buildPrompt(request)));
+        }
     }
 
     /**
@@ -51,16 +61,26 @@ public class AgentController {
     @PostMapping(value = "/stream",
             consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Flux<ServerSentEvent<String>> stream(@RequestBody LearnRequest request) {
-        return agentService.stream(buildPrompt(request)).map(this::toSse);
+    public Flux<ServerSentEvent<String>> stream(@RequestBody LearnRequest request, Authentication authentication) {
+        Permit permit = admissionPolicy.acquire(AuthenticatedSubject.key(authentication),
+                GenerationAdmissionPolicy.Operation.AGENT);
+        try {
+            return agentService.stream(buildPrompt(request)).map(this::toSse).doFinally(ignored -> permit.close());
+        } catch (RuntimeException e) {
+            permit.close();
+            throw e;
+        }
     }
 
     /**
      * 多智能体同步接口：ResearchAgent 搜集资料 → GuideAgent 生成引导。
      */
     @PostMapping("/multi")
-    public Map<String, String> multi(@RequestBody LearnRequest request) {
-        return Map.of("answer", multiAgentService.run(normalize(request)));
+    public Map<String, String> multi(@RequestBody LearnRequest request, Authentication authentication) {
+        try (Permit ignored = admissionPolicy.acquire(AuthenticatedSubject.key(authentication),
+                GenerationAdmissionPolicy.Operation.AGENT)) {
+            return Map.of("answer", multiAgentService.run(normalize(request)));
+        }
     }
 
     /**
@@ -69,8 +89,18 @@ public class AgentController {
     @PostMapping(value = "/multi/stream",
             consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Flux<ServerSentEvent<RagEvent>> multiStream(@RequestBody LearnRequest request) {
-        return multiAgentService.stream(normalize(request)).map(e -> ServerSentEvent.builder(e).build());
+    public Flux<ServerSentEvent<RagEvent>> multiStream(@RequestBody LearnRequest request,
+                                                       Authentication authentication) {
+        Permit permit = admissionPolicy.acquire(AuthenticatedSubject.key(authentication),
+                GenerationAdmissionPolicy.Operation.AGENT);
+        try {
+            return multiAgentService.stream(normalize(request))
+                    .map(e -> ServerSentEvent.builder(e).build())
+                    .doFinally(ignored -> permit.close());
+        } catch (RuntimeException e) {
+            permit.close();
+            throw e;
+        }
     }
 
     private LearnRequest normalize(LearnRequest request) {
@@ -91,7 +121,7 @@ public class AgentController {
         try {
             escaped = objectMapper.writeValueAsString(token);
         } catch (JsonProcessingException e) {
-            log.warn("SSE token 转义失败", e);
+            log.warn("SSE token 转义失败，errorType={}", e.getClass().getSimpleName());
             escaped = "\"\"";
         }
         return ServerSentEvent.builder(escaped).build();

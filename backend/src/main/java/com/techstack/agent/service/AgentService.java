@@ -7,6 +7,8 @@ import org.springframework.ai.tool.ToolCallback;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 
+import com.techstack.agent.security.ReactorSecurityContext;
+
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
 
@@ -58,11 +60,12 @@ public class AgentService {
      * 流式生成学习引导（SSE 用），逐 token 返回。
      */
     public Flux<String> stream(String query) {
-        return buildClient().prompt()
+        Flux<String> pipeline = Flux.defer(() -> buildClient().prompt()
                 .system(SYSTEM_PROMPT)
                 .user(query)
                 .stream()
-                .content();
+                .content());
+        return ReactorSecurityContext.onBlockingScheduler(pipeline);
     }
 
     /**
@@ -80,7 +83,7 @@ public class AgentService {
                 }
             }
         } catch (Exception e) {
-            log.warn("MCP 工具加载失败，降级为仅本地工具: {}", e.getMessage());
+            log.warn("MCP 工具加载失败，降级为仅本地工具，errorType={}", e.getClass().getSimpleName());
         }
         return builder.build();
     }

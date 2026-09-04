@@ -13,7 +13,7 @@
 
     <groupId>com.techstack</groupId>
     <artifactId>devguide</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>0.7.0</version>
     <name>DevGuide</name>
     <description>面向开发者的技术栈学习 Agent</description>
 
@@ -135,6 +135,11 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

@@ -1,7 +1,16 @@
 # ===== 密钥与本地配置（严禁提交）=====
 .env
+.env.*
+!.env.example
+!.env.production.example
+!scripts/ops/backup.env.example
 docs/隐私文档/
 *.local
+*.dump
+*.dump.age
+*.backup
+*.backup.age
+backups/
 
 # ===== 本地参考仓库与 Agent 工具资源 =====
 # spring-ai-alibaba-examples 是仅供开发参考的独立 Git checkout；不要嵌套提交。

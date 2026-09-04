@@ -1,6 +1,6 @@
 {
   "name": "devguide-frontend",
-  "version": "0.0.1",
+  "version": "0.7.0",
   "license": "MIT",
   "private": true,
   "type": "module",

@@ -6,10 +6,12 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.Authentication;
 
 import com.techstack.agent.dto.TechStackDto;
 import com.techstack.agent.dto.TechStackOverviewDto;
 import com.techstack.agent.service.TechStackService;
+import com.techstack.agent.security.AuthenticatedSubject;
 
 /**
  * 技术栈查询接口。
@@ -30,7 +32,7 @@ public class TechStackController {
     }
 
     @GetMapping("/{name}")
-    public TechStackOverviewDto get(@PathVariable String name) {
-        return techStackService.getOverview(name);
+    public TechStackOverviewDto get(@PathVariable String name, Authentication authentication) {
+        return techStackService.getOverview(name, AuthenticatedSubject.key(authentication));
     }
 }

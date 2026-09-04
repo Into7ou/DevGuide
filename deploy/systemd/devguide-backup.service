@@ -1,0 +1,14 @@
+[Unit]
+Description=DevGuide encrypted PostgreSQL backup
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+User=devguide
+Group=docker
+WorkingDirectory=/opt/devguide
+EnvironmentFile=/etc/devguide/backup.env
+ExecStart=/usr/bin/bash /opt/devguide/scripts/ops/backup-production.sh
+PrivateTmp=true
+NoNewPrivileges=true

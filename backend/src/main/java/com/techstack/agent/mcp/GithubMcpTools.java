@@ -49,7 +49,7 @@ public class GithubMcpTools {
                     .map(r -> new RepoSummary(r.fullName(), r.stargazersCount(), r.language(), r.description(), r.htmlUrl()))
                     .toList());
         } catch (Exception e) {
-            log.warn("MCP GitHub 搜索失败: {}", query, e);
+            log.warn("MCP GitHub 搜索失败，errorType={}", e.getClass().getSimpleName());
             return "GitHub 搜索服务暂不可用（可能限流），请稍后重试";
         }
     }
@@ -68,7 +68,7 @@ public class GithubMcpTools {
             int max = 6000;
             return readme.length() > max ? readme.substring(0, max) + "\n...(截断)" : readme;
         } catch (Exception e) {
-            log.warn("MCP 抓取 README 失败: {}", fullName, e);
+            log.warn("MCP 抓取 README 失败，errorType={}", e.getClass().getSimpleName());
             return "抓取 " + fullName + " 的 README 失败，请稍后重试";
         }
     }
@@ -77,7 +77,7 @@ public class GithubMcpTools {
         try {
             return objectMapper.writeValueAsString(value);
         } catch (JsonProcessingException e) {
-            log.warn("MCP 工具结果序列化失败", e);
+            log.warn("MCP 工具结果序列化失败，errorType={}", e.getClass().getSimpleName());
             return "[]";
         }
     }

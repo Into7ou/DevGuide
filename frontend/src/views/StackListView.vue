@@ -11,6 +11,8 @@ const stacks = ref([])
 const keyword = ref('')
 const loading = ref(true)
 const error = ref('')
+const authenticated = ref(false)
+const loginPrompt = ref(false)
 
 const activeCategory = computed(() => route.query.category || '')
 
@@ -25,7 +27,9 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    const res = await fetch('/api/v1/tech-stacks')
+    const authRes = await fetch('/api/auth/me')
+    if (authRes.ok) authenticated.value = Boolean((await authRes.json()).authenticated)
+    const res = await fetch('/api/v1/showcase/tech-stacks')
     if (!res.ok) throw new Error(`加载失败 (${res.status})`)
     stacks.value = await res.json()
   } catch (e) {
@@ -37,7 +41,12 @@ async function load() {
 
 function searchArbitrary() {
   const k = trimmedKeyword.value
-  if (k) router.push({ name: 'stack-detail', params: { name: k } })
+  if (!k) return
+  if (!authenticated.value) {
+    loginPrompt.value = true
+    return
+  }
+  router.push({ name: 'stack-detail', params: { name: k } })
 }
 
 function onEnter() {
@@ -71,7 +80,13 @@ onMounted(load)
 
       <div v-if="showWebSearch" class="web-search">
         <p class="web-search-hint">「{{ trimmedKeyword }}」暂未收录，可联网搜索官方文档与 GitHub 项目并生成学习引导。</p>
-        <button class="btn-primary" @click="searchArbitrary">联网查询「{{ trimmedKeyword }}」</button>
+        <button class="btn-primary" @click="searchArbitrary">
+          {{ authenticated ? `联网查询「${trimmedKeyword}」` : '登录后联网查询' }}
+        </button>
+        <p v-if="loginPrompt && !authenticated" class="login-prompt" role="status">
+          动态搜索会调用外部服务，请先登录。
+          <a href="/oauth2/authorization/github">使用 GitHub 登录</a>
+        </p>
       </div>
 
       <div v-else-if="!filtered.length" class="state">没有匹配的技术栈</div>
@@ -98,6 +113,7 @@ onMounted(load)
   gap: var(--space-md);
 }
 .web-search-hint { margin: 0; color: var(--color-muted-foreground); font-size: 15px; }
+.login-prompt { margin: 0; color: var(--color-muted-foreground); font-size: 14px; }
 .category-bar {
   display: flex;
   align-items: center;

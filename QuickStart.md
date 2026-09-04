@@ -36,6 +36,14 @@ Copy-Item .env.example .env
 
 > `.env` 只用于本机或受控部署环境，已经被 Git 忽略。不要把真实 API Key、Token、OAuth Secret 或密码写入 Markdown、源码、日志、截图和问题记录。
 
+`TOKEN_CIPHER_KEY` 至少使用 32 个随机字符。PowerShell 可生成 32 字节随机值：
+
+```powershell
+[Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
+```
+
+轮换时把新值写入 `TOKEN_CIPHER_KEY`，把旧值临时写入 `TOKEN_CIPHER_PREVIOUS_KEYS`。新登录会使用新密钥覆盖 Token；确认轮换完成后再移除旧密钥。
+
 GitHub OAuth App 的本地回调地址：
 
 ```text
@@ -118,6 +126,19 @@ docker compose down
 ```
 
 该命令不会删除 `pgdata` 数据卷。如需处理本地数据，请先确认目标和备份，不要直接删除数据卷。
+
+## 7. 生产配置基线
+
+生产部署从 `.env.production.example` 复制受保护的环境文件，并启用 `SPRING_PROFILES_ACTIVE=prod`。生产 profile 会：
+
+- 强制 Session Cookie 使用 `Secure`、`HttpOnly` 和 `SameSite=Lax`；
+- 信任框架解析的反向代理转发头，因此外层代理必须覆盖而不是透传客户端伪造的 `X-Forwarded-*`；
+- 要求显式提供 GitHub OAuth 与前端 HTTPS 地址；
+- 限定首次部署为单后端实例。
+
+当前 Session 与 OAuth authorized-client 尚未使用共享存储，不能直接增加后端副本；横向扩容前需接入 `spring-session-jdbc` 和 JDBC authorized-client service。
+
+完整的 GHCR、OCI、域名、生产 OAuth、脱敏迁移、加密备份、发布回滚和监控步骤见 [M7 部署运行手册](docs/M7-部署/部署运行手册.md)。本机日常仍只需在 Docker Desktop 启停 `techstack-postgres`；前后端的 `app` profile 不会随普通数据库启动自动运行。
 
 ## 常见问题
 

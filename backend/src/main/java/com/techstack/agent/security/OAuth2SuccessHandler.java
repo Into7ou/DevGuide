@@ -59,7 +59,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
                 }
             }
         } catch (Exception e) {
-            log.warn("token 落库失败，本次登录继续", e);
+            log.warn("token 落库失败，本次登录继续，errorType={}", e.getClass().getSimpleName());
         }
         response.sendRedirect(frontendBaseUrl);
     }
@@ -72,7 +72,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         }
         User user = userMapper.findByGithubId(Long.valueOf(idAttr.toString()));
         if (user == null) {
-            log.warn("未找到 github_id={} 的本地用户，跳过 token 绑定", idAttr);
+            log.warn("未找到对应的本地用户，跳过 token 绑定");
             return;
         }
         UserToken token = new UserToken();
