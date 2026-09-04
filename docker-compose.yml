@@ -1,3 +1,12 @@
+name: skilllearningagents
+
+x-service-logging: &service-logging
+  driver: local
+  options:
+    max-size: "10m"
+    max-file: "5"
+    compress: "true"
+
 services:
   postgres:
     image: pgvector/pgvector:pg16
@@ -7,9 +16,6 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-techstack}
       POSTGRES_USER: ${POSTGRES_USER:-techstack}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
-    ports:
-      # Keep the host port outside Windows reserved ranges; PostgreSQL uses 5432 inside the container.
-      - "${POSTGRES_PORT:-15432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -17,6 +23,72 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    logging: *service-logging
+
+  backend:
+    image: ghcr.io/into7ou/devguide-backend:${IMAGE_TAG:-v0.7.0}
+    container_name: devguide-backend
+    profiles: ["app"]
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: 18080
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-https://devguide.into7ou.is-a.dev}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-techstack}
+      POSTGRES_USER: ${POSTGRES_USER:-techstack}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
+      DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-deepseek-chat}
+      DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY:-}
+      DASHSCOPE_EMBEDDING_MODEL: ${DASHSCOPE_EMBEDDING_MODEL:-text-embedding-v2}
+      TAVILY_SEARCH_API_KEY: ${TAVILY_SEARCH_API_KEY:-}
+      GENERATION_AGENT_DAILY_LIMIT: ${GENERATION_AGENT_DAILY_LIMIT:-10}
+      GENERATION_DISCOVERY_DAILY_LIMIT: ${GENERATION_DISCOVERY_DAILY_LIMIT:-20}
+      GENERATION_MAX_CONCURRENT: ${GENERATION_MAX_CONCURRENT:-2}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      GITHUB_OAUTH_CLIENT_ID: ${GITHUB_OAUTH_CLIENT_ID:-}
+      GITHUB_OAUTH_CLIENT_SECRET: ${GITHUB_OAUTH_CLIENT_SECRET:-}
+      TOKEN_CIPHER_KEY: ${TOKEN_CIPHER_KEY:-}
+      TOKEN_CIPHER_PREVIOUS_KEYS: ${TOKEN_CIPHER_PREVIOUS_KEYS:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:18080/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 45s
+    logging: *service-logging
+
+  frontend:
+    image: ghcr.io/into7ou/devguide-frontend:${IMAGE_TAG:-v0.7.0}
+    container_name: devguide-frontend
+    profiles: ["app"]
+    restart: unless-stopped
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-devguide.into7ou.is-a.dev}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    logging: *service-logging
 
 volumes:
   pgdata:
+  caddy_data:
+  caddy_config:

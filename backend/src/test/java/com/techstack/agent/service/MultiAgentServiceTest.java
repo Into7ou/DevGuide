@@ -9,10 +9,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.IntStream;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.techstack.agent.dto.*;
@@ -50,6 +55,10 @@ class MultiAgentServiceTest {
         when(guide.answerStream(anyString())).thenReturn(Flux.just("Controller 接收请求。", "[S1]"));
     }
 
+    @AfterEach void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
+
     List<RagEvent> run(LearnRequest input) { return service.stream(input).collectList().block(Duration.ofSeconds(5)); }
 
     @Test void localEvidenceIsRetrievedBeforeAgentAssessmentAndNeedsNoWeb() {
@@ -85,6 +94,37 @@ class MultiAgentServiceTest {
             assertTrue(assessing.await(2, TimeUnit.SECONDS));
             assertTrue(progress.await(1, TimeUnit.SECONDS), "资料判断尚未结束时就应显示本地检索完成");
         } finally { release.countDown(); subscriber.dispose(); }
+    }
+
+    @Test void blockingResearchRunsOnBoundedElasticWorker() {
+        AtomicReference<String> worker = new AtomicReference<>();
+        when(knowledge.search(anyString())).thenAnswer(call -> {
+            worker.set(Thread.currentThread().getName());
+            return List.of(source("", "local", "A controller handles requests."));
+        });
+
+        run(request);
+
+        assertTrue(worker.get().startsWith("boundedElastic-"),
+                "阻塞研究流程必须与事件线程隔离: " + worker.get());
+    }
+
+    @Test void authenticatedUserIsVisibleOnWorkerAndDoesNotLeakIntoNextRequest() {
+        Authentication authentication = UsernamePasswordAuthenticationToken.authenticated(
+                "developer", "n/a", List.of());
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+        List<String> workerPrincipals = new java.util.concurrent.CopyOnWriteArrayList<>();
+        when(knowledge.search(anyString())).thenAnswer(call -> {
+            Authentication current = SecurityContextHolder.getContext().getAuthentication();
+            workerPrincipals.add(current == null ? "anonymous" : current.getName());
+            return List.of(source("", "local", "A controller handles requests."));
+        });
+
+        run(request);
+        SecurityContextHolder.clearContext();
+        run(request);
+
+        assertEquals(List.of("developer", "anonymous"), workerPrincipals);
     }
 
     @Test void ambiguousQuestionAsksForClarificationAndKeepsContext() {

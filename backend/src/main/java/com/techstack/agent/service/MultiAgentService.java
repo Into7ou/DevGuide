@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import com.techstack.agent.dto.LearnRequest;
 import com.techstack.agent.dto.RagEvent;
 import com.techstack.agent.dto.RagSource;
+import com.techstack.agent.security.ReactorSecurityContext;
 import com.techstack.agent.tool.WebSearchTools;
 import com.techstack.agent.service.ResearchAgent.Assessment;
 
@@ -55,7 +56,7 @@ public class MultiAgentService {
     }
 
     public Flux<RagEvent> stream(LearnRequest request) {
-        return Flux.<RagEvent>create(sink -> {
+        Flux<RagEvent> pipeline = Flux.create(sink -> {
             try {
                 List<RagSource> sources = new ArrayList<>();
                 List<String> searches = new ArrayList<>();
@@ -66,7 +67,7 @@ public class MultiAgentService {
                     addSources(sources, knowledge.search(request.techStack() + history + "\n" + request.question()));
                     status(sink, "本地检索完成，找到 " + sources.size() + " 个片段；正在判断是否覆盖问题。");
                 } catch (Exception e) {
-                    log.warn("RAG 本地检索失败", e);
+                    log.warn("RAG 本地检索失败，errorType={}", e.getClass().getSimpleName());
                     status(sink, "本地知识库暂不可用，将尝试联网补充。");
                 }
                 if (sink.isCancelled()) return;
@@ -101,13 +102,13 @@ public class MultiAgentService {
                                         pages.add(new DocsFetcher.Page(page.title(), page.url(),
                                                 page.text().substring(0, Math.min(24000, page.text().length()))));
                                     }
-                                } catch (Exception e) { log.warn("RAG 正文抓取失败: {}", url); }
+                                } catch (Exception e) { log.warn("RAG 正文抓取失败，errorType={}", e.getClass().getSimpleName()); }
                             }
                         }
                         if (!pages.isEmpty()) addSources(sources, research.extract(request, pages));
                         else status(sink, "本轮未获得可核对的正文，继续依据已有资料判断。");
                     } catch (Exception e) {
-                        log.warn("RAG 联网补充失败，轮次={}", rounds, e);
+                        log.warn("RAG 联网补充失败，轮次={}，errorType={}", rounds, e.getClass().getSimpleName());
                         status(sink, "本轮联网补充未成功，已取得的资料仍会保留。");
                     }
                     if (sink.isCancelled()) return;
@@ -140,15 +141,16 @@ public class MultiAgentService {
                 });
                 sink.onCancel(generation);
             } catch (Exception e) { fail(sink, e); }
-        // SSE 写线程会逐条请求事件；不要把请求也排到正在阻塞抓取/推理的同一工作线程。
-        }).subscribeOn(Schedulers.boundedElastic(), false);
+        });
+        // 抓取、向量检索和模型调用是阻塞边界；同时捕获当前登录上下文供 GitHub 工具读取用户 Token。
+        return ReactorSecurityContext.onBlockingScheduler(pipeline);
     }
 
     private void cache(LearnRequest request, List<RagSource> cited) {
         try {
             int added = knowledge.save(research.selectForStorage(request, cited));
             log.info("RAG 精选回写完成，新增片段={}", added);
-        } catch (Exception e) { log.warn("RAG 异步回写失败，已完成的回答不受影响", e); }
+        } catch (Exception e) { log.warn("RAG 异步回写失败，已完成的回答不受影响，errorType={}", e.getClass().getSimpleName()); }
     }
 
     static List<RagSource> citedSources(String answer, List<RagSource> sources) {
@@ -176,7 +178,7 @@ public class MultiAgentService {
     private void status(FluxSink<RagEvent> sink, String message) { sink.next(new RagEvent("status", message)); }
 
     private void fail(FluxSink<RagEvent> sink, Throwable error) {
-        log.warn("RAG 问答中断", error);
+        log.warn("RAG 问答中断，errorType={}", error.getClass().getSimpleName());
         sink.next(new RagEvent("error", "本轮回答未完成，请重试；已有回答已保留。"));
         sink.complete();
     }

@@ -113,7 +113,7 @@ public class LearningAgentService {
             List<Document> documents = fetchDocuments(stack);
             List<Document> chunks = splitter.apply(documents);
             if (chunks.isEmpty()) {
-                log.error("入库失败：未抓取到任何有效片段，techStack={}", stackName);
+                log.error("入库失败：未抓取到任何有效片段");
                 return 0;
             }
 
@@ -142,7 +142,7 @@ public class LearningAgentService {
                             Map.of("tech_stack", stack.getName(), "source", url, "type", "official_doc")));
                 }
             } catch (Exception e) {
-                log.warn("抓取官方文档失败: {}", url);
+                log.warn("抓取官方文档失败");
             }
         }
 
@@ -158,11 +158,11 @@ public class LearningAgentService {
                                 "repo", repo.fullName())));
                     }
                 } catch (Exception e) {
-                    log.warn("抓取 README 失败: {}", repo.fullName());
+                    log.warn("抓取 README 失败");
                 }
             }
         } catch (Exception e) {
-            log.warn("拉取 Top10 仓库失败，techStack={}", stack.getName());
+            log.warn("拉取 Top10 仓库失败");
         }
 
         return documents;
@@ -231,7 +231,7 @@ public class LearningAgentService {
             return objectMapper.readValue(json, new TypeReference<List<String>>() {
             });
         } catch (JsonProcessingException e) {
-            log.warn("解析 docKeyPages 失败: {}", json, e);
+            log.warn("解析 docKeyPages 失败，errorType={}", e.getClass().getSimpleName());
             return List.of();
         }
     }

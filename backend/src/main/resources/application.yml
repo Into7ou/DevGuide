@@ -10,7 +10,7 @@ spring:
     name: devguide
 
   datasource:
-    url: jdbc:postgresql://localhost:${POSTGRES_PORT:15432}/${POSTGRES_DB:techstack}
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:15432}/${POSTGRES_DB:techstack}
     username: ${POSTGRES_USER:techstack}
     password: ${POSTGRES_PASSWORD}
     driver-class-name: org.postgresql.Driver
@@ -91,6 +91,11 @@ github:
 
 # 业务自定义配置
 app:
+  generation-admission:
+    enabled: ${GENERATION_ADMISSION_ENABLED:false}
+    agent-daily-limit: ${GENERATION_AGENT_DAILY_LIMIT:10}
+    discovery-daily-limit: ${GENERATION_DISCOVERY_DAILY_LIMIT:20}
+    max-concurrent: ${GENERATION_MAX_CONCURRENT:2}
   rag:
     max-web-rounds: ${RAG_MAX_WEB_ROUNDS:2}
     max-pages-per-round: ${RAG_MAX_PAGES_PER_ROUND:3}
@@ -100,3 +105,5 @@ app:
   frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
   security:
     token-cipher-key: ${TOKEN_CIPHER_KEY:}
+    # 轮换时暂存旧密钥（逗号分隔）；新写入始终使用 TOKEN_CIPHER_KEY。
+    token-cipher-previous-keys: ${TOKEN_CIPHER_PREVIOUS_KEYS:}

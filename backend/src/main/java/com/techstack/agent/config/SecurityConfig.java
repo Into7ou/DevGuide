@@ -1,21 +1,23 @@
 package com.techstack.agent.config;
 
+import java.io.IOException;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
-import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
-import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
 import com.techstack.agent.security.CustomOAuth2UserService;
 import com.techstack.agent.security.OAuth2SuccessHandler;
 
+import jakarta.servlet.http.HttpServletResponse;
+
 /**
- * Spring Security 配置：GitHub OAuth2 登录。
- * 当前业务接口暂未强制登录（M5 后续可收紧为 .anyRequest().authenticated()）。
+ * Spring Security 配置：GitHub OAuth2 登录 + 生产 API 访问边界。
  */
 @Configuration
 @EnableWebSecurity
@@ -33,14 +35,32 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                // 仅对 /api/** 关闭 CSRF（当前业务接口全为只读 GET，且为前后端分离的 JSON API；
-                // 未来若加状态变更接口，应改为显式 requestMatchers 放行而非全站关闭）。
-                .csrf(csrf -> csrf.ignoringRequestMatchers("/api/**"))
+                .csrf(csrf -> csrf
+                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/", "/index.html", "/assets/**", "/favicon.ico",
+                                "/api/health", "/api/auth/me", "/api/auth/csrf",
+                                "/api/v1/showcase/tech-stacks", "/api/v1/showcase/tech-stacks/**",
+                                "/oauth2/**", "/login/**", "/error")
+                        .permitAll()
+                        .requestMatchers("/api/**", "/sse", "/mcp/**").authenticated()
                         .anyRequest().permitAll())
+                .exceptionHandling(exceptions -> exceptions
+                        .defaultAuthenticationEntryPointFor(
+                                (request, response, failure) -> writeUnauthorized(response),
+                                request -> request.getRequestURI().startsWith("/api/")
+                                        || request.getRequestURI().equals("/sse")
+                                        || request.getRequestURI().startsWith("/mcp/")))
                 .oauth2Login(oauth2 -> oauth2
                         .userInfoEndpoint(ui -> ui.userService(customOAuth2UserService))
                         .successHandler(oauth2SuccessHandler));
         return http.build();
+    }
+
+    private static void writeUnauthorized(HttpServletResponse response) throws IOException {
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setCharacterEncoding("UTF-8");
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.getWriter().write("{\"error\":\"authentication_required\"}");
     }
 }

@@ -1,6 +1,7 @@
 <script setup>
 import { ref, reactive, watch, onBeforeUnmount } from 'vue'
 import { parseSseChunk, parseSseRemainder } from '../utils/sse'
+import { csrfHeaders } from '../utils/csrf'
 
 const props = defineProps({ techStack: { type: String, required: true } })
 const question = ref('')
@@ -33,15 +34,18 @@ async function learn() {
   const controller = new AbortController()
   activeController = controller
   try {
+    const securityHeaders = await csrfHeaders()
     const res = await fetch('/api/v1/agent/multi/stream', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...securityHeaders },
       signal: controller.signal,
       body: JSON.stringify({ techStack: props.techStack, question: turn.question, history })
     })
     if (!res.ok || !res.body) {
       const data = await res.json().catch(() => ({}))
-      throw new Error(data.error || `请求失败 (${res.status})`)
+      if (res.status === 401) throw new Error('登录状态已失效，请重新登录后再试。')
+      if (res.status === 429) throw new Error(data.message || '今日生成额度已用完或服务正忙，请稍后再试。')
+      throw new Error(data.message || data.error || `请求失败 (${res.status})`)
     }
     await readStream(res.body, turn, controller.signal)
     if (!controller.signal.aborted && turn.state === 'running') throw new Error('连接中断，本轮回答未完成，请重新提问。')

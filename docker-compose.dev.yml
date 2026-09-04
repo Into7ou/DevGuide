@@ -1,0 +1,5 @@
+services:
+  postgres:
+    ports:
+      # 本地 Maven 继续通过原端口访问；生产部署不加载本文件。
+      - "${POSTGRES_PORT:-15432}:5432"

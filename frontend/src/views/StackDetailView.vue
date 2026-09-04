@@ -8,13 +8,17 @@ const route = useRoute()
 const overview = ref(null)
 const loading = ref(true)
 const error = ref('')
+const authenticated = ref(false)
 
 async function load(name) {
   loading.value = true
   error.value = ''
   overview.value = null
   try {
-    const res = await fetch(`/api/v1/tech-stacks/${encodeURIComponent(name)}`)
+    const authRes = await fetch('/api/auth/me')
+    if (authRes.ok) authenticated.value = Boolean((await authRes.json()).authenticated)
+    const base = authenticated.value ? '/api/v1/tech-stacks' : '/api/v1/showcase/tech-stacks'
+    const res = await fetch(`${base}/${encodeURIComponent(name)}`)
     if (!res.ok) {
       const body = await res.json().catch(() => null)
       throw new Error(body?.error || `查询失败，请稍后重试（${res.status}）`)
@@ -62,7 +66,12 @@ watch(() => route.params.name, (n) => { if (n) load(n) })
         <p v-else class="state">暂无项目数据</p>
       </section>
 
-      <LearnPanel :tech-stack="overview.name" />
+      <LearnPanel v-if="authenticated" :tech-stack="overview.name" />
+      <section v-else class="login-card card">
+        <h2>登录后开始学习对话</h2>
+        <p>Agent 问答和联网补充会调用外部服务，请先登录；已有资料仍可匿名浏览。</p>
+        <a class="btn-primary login-link" href="/oauth2/authorization/github">使用 GitHub 登录</a>
+      </section>
     </template>
   </section>
 </template>
@@ -82,4 +91,8 @@ watch(() => route.params.name, (n) => { if (n) load(n) })
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: var(--space-md);
 }
+.login-card { text-align: center; padding: var(--space-xl); }
+.login-card h2 { margin-top: 0; font-size: 18px; }
+.login-card p { color: var(--color-muted-foreground); }
+.login-link { display: inline-block; text-decoration: none; }
 </style>

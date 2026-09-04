@@ -1,0 +1,32 @@
+server:
+  # TLS 在反向代理终止时，正确识别 X-Forwarded-*，用于生成安全重定向与 Cookie。
+  forward-headers-strategy: framework
+  servlet:
+    session:
+      cookie:
+        secure: true
+        http-only: true
+        same-site: lax
+
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          github:
+            client-id: ${GITHUB_OAUTH_CLIENT_ID}
+            client-secret: ${GITHUB_OAUTH_CLIENT_SECRET}
+
+logging:
+  level:
+    org.springframework.security: WARN
+    org.mybatis: WARN
+    com.baomidou.mybatisplus: WARN
+
+app:
+  generation-admission:
+    enabled: true
+  frontend-base-url: ${FRONTEND_BASE_URL}
+  deployment:
+    # 首次 M7 部署只允许单后端实例；横向扩容前必须接入共享 Session/authorized-client。
+    single-instance: true

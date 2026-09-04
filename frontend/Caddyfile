@@ -1,0 +1,39 @@
+{$SITE_ADDRESS:devguide.into7ou.is-a.dev} {
+	encode zstd gzip
+	log {
+		output file /tmp/devguide-logs/caddy-access.log {
+			mode 0600
+			roll_size 10mb
+			roll_at 00:00
+			roll_keep 4
+			roll_keep_for 168h
+		}
+		format filter {
+			request>uri regexp \\?.*$ ""
+			request>headers delete
+			request>remote_ip ip_mask 16 32
+			request>client_ip ip_mask 16 32
+		}
+	}
+	log_append request_id {http.request.uuid}
+
+	@backend path /api/* /oauth2/* /login/* /sse* /mcp/*
+	handle @backend {
+		reverse_proxy backend:18080 {
+			# 覆盖浏览器伪造值，供 Caddy 与后端日志关联。
+			header_up X-Proxy-Request-ID {http.request.uuid}
+			# SSE 逐事件转发，避免代理缓冲。
+			flush_interval -1
+		}
+	}
+
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}
+
+:8080 {
+	respond /healthz 200
+}

@@ -18,4 +18,17 @@ describe('技术栈准入反馈', () => {
     expect(wrapper.find('a.doc-link').exists()).toBe(false)
     wrapper.unmount()
   })
+
+  it('匿名已收录详情使用 showcase 接口并展示登录入口', async () => {
+    const fetch = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ authenticated: false }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ name: 'React', topRepos: [] }) })
+    vi.stubGlobal('fetch', fetch)
+    const wrapper = mount(StackDetailView, { global: { stubs: { LearnPanel: true } } })
+    await flushPromises()
+    expect(fetch.mock.calls[1][0]).toContain('/api/v1/showcase/tech-stacks/')
+    expect(wrapper.find('learn-panel-stub').exists()).toBe(false)
+    expect(wrapper.get('.login-card').text()).toContain('登录后开始学习对话')
+    wrapper.unmount()
+  })
 })

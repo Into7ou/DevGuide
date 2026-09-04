@@ -1,8 +1,11 @@
 package com.techstack.agent.security;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.List;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.codec.Hex;
 import org.springframework.security.crypto.encrypt.BytesEncryptor;
@@ -16,28 +19,71 @@ import org.springframework.stereotype.Component;
 @Component
 public class TokenCipher {
 
+    private static final String V2_PREFIX = "v2:";
+    private static final int MIN_CURRENT_KEY_LENGTH = 32;
     private static final Base64.Encoder ENCODER = Base64.getEncoder();
     private static final Base64.Decoder DECODER = Base64.getDecoder();
 
-    private final BytesEncryptor encryptor;
+    private final List<KeyEncryptors> keys;
 
     public TokenCipher(@Value("${app.security.token-cipher-key:}") String key) {
-        // 安全默认值：不允许空密钥或公开的占位密钥，漏配时 fail-fast 而不是静默用弱密钥。
-        if (key == null || key.isBlank() || "dev-insecure-key".equals(key)) {
-            throw new IllegalStateException(
-                    "TOKEN_CIPHER_KEY 未配置或仍为不安全默认值，请在 .env 中显式设置 app.security.token-cipher-key");
+        this(key, "");
+    }
+
+    @Autowired
+    public TokenCipher(@Value("${app.security.token-cipher-key:}") String key,
+                       @Value("${app.security.token-cipher-previous-keys:}") String previousKeys) {
+        validateCurrentKey(key);
+        List<String> configuredKeys = new ArrayList<>();
+        configuredKeys.add(key);
+        if (previousKeys != null && !previousKeys.isBlank()) {
+            for (String previous : previousKeys.split(",")) {
+                String candidate = previous.trim();
+                if (!candidate.isEmpty()) {
+                    configuredKeys.add(candidate);
+                }
+            }
         }
-        // Encryptors.standard 的 salt 参数会被 Hex.decode() 解码，必须是偶数长度的十六进制字符串，
-        // 因此把固定的盐值 "techstack-agent" 转成 hex 再传入。
         String saltHex = new String(Hex.encode("techstack-agent".getBytes(StandardCharsets.UTF_8)));
-        this.encryptor = Encryptors.standard(key, saltHex);
+        this.keys = configuredKeys.stream()
+                .map(candidate -> new KeyEncryptors(
+                        Encryptors.stronger(candidate, saltHex),
+                        Encryptors.standard(candidate, saltHex)))
+                .toList();
     }
 
     public String encrypt(String plain) {
-        return ENCODER.encodeToString(encryptor.encrypt(plain.getBytes(StandardCharsets.UTF_8)));
+        byte[] encrypted = keys.getFirst().stronger().encrypt(plain.getBytes(StandardCharsets.UTF_8));
+        return V2_PREFIX + ENCODER.encodeToString(encrypted);
     }
 
     public String decrypt(String cipher) {
-        return new String(encryptor.decrypt(DECODER.decode(cipher)), StandardCharsets.UTF_8);
+        boolean v2 = cipher != null && cipher.startsWith(V2_PREFIX);
+        String payload = v2 ? cipher.substring(V2_PREFIX.length()) : cipher;
+        RuntimeException lastFailure = null;
+        for (KeyEncryptors candidate : keys) {
+            try {
+                BytesEncryptor decryptor = v2 ? candidate.stronger() : candidate.legacy();
+                return new String(decryptor.decrypt(DECODER.decode(payload)), StandardCharsets.UTF_8);
+            } catch (RuntimeException failure) {
+                lastFailure = failure;
+            }
+        }
+        throw new IllegalArgumentException("无法使用当前或历史密钥解密用户 Token", lastFailure);
+    }
+
+    private static void validateCurrentKey(String key) {
+        String normalized = key == null ? "" : key.trim().toLowerCase();
+        boolean placeholder = normalized.contains("change_me")
+                || normalized.contains("insecure")
+                || normalized.contains("placeholder")
+                || normalized.startsWith("your_");
+        if (key == null || key.length() < MIN_CURRENT_KEY_LENGTH || placeholder) {
+            throw new IllegalStateException(
+                    "TOKEN_CIPHER_KEY 必须是至少 32 个字符的随机密钥，且不能使用示例占位值");
+        }
+    }
+
+    private record KeyEncryptors(BytesEncryptor stronger, BytesEncryptor legacy) {
     }
 }

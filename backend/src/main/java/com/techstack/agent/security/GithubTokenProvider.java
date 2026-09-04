@@ -46,7 +46,7 @@ public class GithubTokenProvider {
                     UserToken token = userTokenMapper.findLatestByUserId(user.getId());
                     if (token != null) {
                         if (isExpired(token)) {
-                            log.warn("用户 {} 的绑定 token 已过期，清理并回退应用级 token", user.getId());
+                            log.warn("绑定 token 已过期，清理并回退应用级 token");
                             userTokenMapper.deleteByUserId(user.getId());
                             return properties.getToken();
                         }
@@ -76,7 +76,7 @@ public class GithubTokenProvider {
                 if (user != null) {
                     int deleted = userTokenMapper.deleteByUserId(user.getId());
                     if (deleted > 0) {
-                        log.warn("用户 {} 的绑定 token 因 401 被清除，后续回退应用级 token", user.getId());
+                        log.warn("绑定 token 因 401 被清除，后续回退应用级 token");
                         return true;
                     }
                 }

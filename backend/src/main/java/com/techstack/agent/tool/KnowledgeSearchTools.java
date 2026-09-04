@@ -58,7 +58,7 @@ public class KnowledgeSearchTools {
                     .toList();
             return toJson(hits);
         } catch (Exception e) {
-            log.warn("知识库检索失败: {}", query, e);
+            log.warn("知识库检索失败，errorType={}", e.getClass().getSimpleName());
             return "本地知识库检索失败，请基于其他资料继续作答";
         }
     }
@@ -67,7 +67,7 @@ public class KnowledgeSearchTools {
         try {
             return objectMapper.writeValueAsString(value);
         } catch (JsonProcessingException e) {
-            log.warn("工具结果序列化失败", e);
+            log.warn("工具结果序列化失败，errorType={}", e.getClass().getSimpleName());
             return "[]";
         }
     }

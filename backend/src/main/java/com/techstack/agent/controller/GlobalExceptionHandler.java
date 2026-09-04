@@ -12,6 +12,8 @@ import org.springframework.web.client.RestClientResponseException;
 
 import lombok.extern.slf4j.Slf4j;
 import com.techstack.agent.service.DiscoveryUnavailableException;
+import com.techstack.agent.service.ShowcaseNotFoundException;
+import com.techstack.agent.service.GenerationRejectedException;
 
 /**
  * 全局异常处理：把底层异常转换为友好的 JSON 错误响应。
@@ -19,6 +21,19 @@ import com.techstack.agent.service.DiscoveryUnavailableException;
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(ShowcaseNotFoundException.class)
+    public ResponseEntity<Map<String, String>> handleShowcaseNotFound(ShowcaseNotFoundException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(Map.of("error", "tech_stack_not_found", "message", e.getMessage()));
+    }
+
+    @ExceptionHandler(GenerationRejectedException.class)
+    public ResponseEntity<Map<String, String>> handleGenerationRejected(GenerationRejectedException e) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header("Retry-After", Long.toString(e.retryAfterSeconds()))
+                .body(Map.of("error", e.code(), "message", e.getMessage()));
+    }
 
     @ExceptionHandler(DiscoveryUnavailableException.class)
     public ResponseEntity<Map<String, String>> handleDiscoveryUnavailable(DiscoveryUnavailableException e) {
@@ -54,7 +69,7 @@ public class GlobalExceptionHandler {
     /** 兜底：未预期异常 */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, String>> handleGeneric(Exception e) {
-        log.error("Unhandled exception", e);
+        log.error("Unhandled exception, errorType={}", e.getClass().getSimpleName());
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of("error", "Internal server error"));
     }

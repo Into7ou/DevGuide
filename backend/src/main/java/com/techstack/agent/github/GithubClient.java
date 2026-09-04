@@ -110,7 +110,7 @@ public class GithubClient {
             try {
                 return retry.get();
             } catch (HttpClientErrorException.Unauthorized retryEx) {
-                log.warn("GitHub 401 重试仍失败（context={}），回退应用级 token 也无效", context);
+                log.warn("GitHub 401 重试仍失败，回退应用级 token 也无效");
                 throw retryEx;
             }
         }
