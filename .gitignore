@@ -4,7 +4,8 @@
 !.env.example
 !.env.production.example
 !scripts/ops/backup.env.example
-docs/隐私文档/
+# 本地开发文档保留在工作区，不提交到公开仓库。
+/docs/
 *.local
 *.dump
 *.dump.age
@@ -43,3 +44,6 @@ npm-debug.log*
 # ===== 日志 =====
 *.log
 logs/
+
+# EdgeOne CLI local authentication and deployment state
+.edgeone/

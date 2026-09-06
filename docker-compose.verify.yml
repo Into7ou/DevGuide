@@ -1,0 +1,24 @@
+# Local verification of published images; never use this HTTP configuration in production.
+name: devguide-verify
+
+services:
+  postgres:
+    container_name: devguide-verify-postgres
+    ports: !override []
+
+  backend:
+    container_name: devguide-verify-backend
+    image: ghcr.io/into7ou/devguide-backend:v0.7.0
+    environment:
+      FRONTEND_BASE_URL: http://localhost:18080
+      SERVER_SERVLET_SESSION_COOKIE_SECURE: "false"
+      TOKEN_CIPHER_KEY: ${CONTAINER_VERIFY_CIPHER_KEY:?Use --env-file .env.container-verify}
+      TOKEN_CIPHER_PREVIOUS_KEYS: ""
+
+  frontend:
+    container_name: devguide-verify-frontend
+    image: ghcr.io/into7ou/devguide-frontend:v0.7.0
+    environment:
+      SITE_ADDRESS: http://localhost
+    ports: !override
+      - "127.0.0.1:18080:80"

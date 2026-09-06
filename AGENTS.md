@@ -1,5 +1,9 @@
 # 项目 Agent 配置
 
+## 文档可见性
+
+`docs/` 是本地开发资料目录，已被 Git 忽略，不随公开仓库分发。下列 `docs/` 引用仅在本地文件存在时适用；新克隆环境以根目录 `CONTEXT.md`、`QuickStart.md` 和源码为准，按需建立本地记录，不将开发文档强制加入 Git。
+
 ## Agent skills
 
 ### Issue tracker

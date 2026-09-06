@@ -115,8 +115,6 @@ npm run test:unit
 npm run build
 ```
 
-上传前最近一次验证结果：后端 48 项测试通过，前端 34 项测试通过，Vite 生产构建通过。
-
 ## 6. 停止本地服务
 
 前后端开发进程可在对应终端按 `Ctrl+C` 停止。停止数据库容器：
@@ -138,7 +136,7 @@ docker compose down
 
 当前 Session 与 OAuth authorized-client 尚未使用共享存储，不能直接增加后端副本；横向扩容前需接入 `spring-session-jdbc` 和 JDBC authorized-client service。
 
-完整的 GHCR、OCI、域名、生产 OAuth、脱敏迁移、加密备份、发布回滚和监控步骤见 [M7 部署运行手册](docs/M7-部署/部署运行手册.md)。本机日常仍只需在 Docker Desktop 启停 `techstack-postgres`；前后端的 `app` profile 不会随普通数据库启动自动运行。
+容器编排见 [docker-compose.yml](docker-compose.yml)，环境变量见 [.env.production.example](.env.production.example)，备份恢复与部署脚本位于 [scripts/ops](scripts/ops/)。数据库需挂载持久卷，升级前应完成备份与恢复验证。本机日常仍只需在 Docker Desktop 启停 `techstack-postgres`；前后端的 `app` profile 不会随普通数据库启动自动运行。
 
 ## 常见问题
 

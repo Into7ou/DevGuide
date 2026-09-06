@@ -4,13 +4,14 @@
 
 **面向开发者的技术栈学习 Agent**
 
+🌐 **[在线访问 DevGuide](https://devguide.up.railway.app/)**
+
 从官方文档与优质开源项目出发，生成有依据、可追问、可复用的技术学习引导。
 
 [![Java 21](https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk&logoColor=white)](https://openjdk.org/)
 [![Spring Boot 3](https://img.shields.io/badge/Spring_Boot-3-6DB33F?logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
 [![Vue 3](https://img.shields.io/badge/Vue-3-42B883?logo=vuedotjs&logoColor=white)](https://vuejs.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-PGvector-4169E1?logo=postgresql&logoColor=white)](https://github.com/pgvector/pgvector)
-[![Status](https://img.shields.io/badge/Status-MVP-22C55E)](docs/需求确认书与开发计划.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-F8FAFC.svg)](LICENSE)
 
 [核心能力](#核心能力) · [工作流程](#工作流程) · [技术栈](#技术栈) · [项目结构](#项目结构) · [快速开始](QuickStart.md)
@@ -96,29 +97,21 @@ flowchart LR
 
 ```text
 DevGuide/
-├─ backend/          Spring Boot 后端、数据库迁移与测试
-├─ frontend/         Vue 3 前端、组件与单元测试
-├─ docs/             需求、阶段记录、问题与验收文档
-├─ design-system/    项目界面设计规范
-├─ scripts/          本地开发脚本
-├─ CONTEXT.md        统一业务术语与关系
-└─ QuickStart.md     环境配置、启动与验证指南
+├─ backend/            Spring Boot 后端、数据库迁移与测试
+├─ frontend/           Vue 3 前端、组件与单元测试
+├─ design-system/      项目界面设计规范
+├─ scripts/            开发、备份恢复与部署验证脚本
+├─ docker-compose.yml  PostgreSQL 与前后端容器编排
+├─ .github/workflows/   自动测试与 GHCR 镜像发布
+├─ CONTEXT.md          统一业务术语与关系
+└─ QuickStart.md       环境配置、启动与验证指南
 ```
-
-## 项目状态
-
-当前版本已经完成 MVP 核心链路：技术栈查询与动态转正、GitHub Top 10、本地优先 RAG、联网补充、引用与资料回写、连续追问及 GitHub OAuth。
-
-浏览器视觉验收与生产级鉴权基线已完成；M7 本地三容器编排、反向代理、公开展示、生成配额、脱敏迁移和运维脚本也已通过本地验收。当前等待 GitHub Actions/GHCR、OCI、DNS、生产 OAuth 与真实 HTTPS 人工配置。详细状态以 [需求确认书与开发计划](docs/需求确认书与开发计划.md)、[M7 测试与验收](docs/M7-部署/测试与验收.md) 和 [M7 部署运行手册](docs/M7-部署/部署运行手册.md) 为准。
 
 ## 文档
 
 - [快速开始](QuickStart.md)：环境准备、密钥配置、启动与测试。
 - [项目上下文](CONTEXT.md)：业务术语、关系与边界。
-- [需求与开发计划](docs/需求确认书与开发计划.md)：产品目标、里程碑与当前状态。
-- [RAG 主流程需求](docs/requirements/PRD-rag-main-flow.md)：本地检索、联网补充、引用与回写规则。
-- [M6.5 测试与验收](docs/M6.5-动态转正与界面优化/测试与验收.md)：自动化和真实接口验证记录。
-- [M7 部署运行手册](docs/M7-部署/部署运行手册.md)：GHCR、OCI、域名、OAuth、迁移、备份、发布、回滚与监控步骤。
+- [第三方声明](THIRD_PARTY_NOTICES.md)：开源依赖的来源与许可。
 
 ## 来源与许可
 
