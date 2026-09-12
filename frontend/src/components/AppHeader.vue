@@ -1,6 +1,8 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 
+const header = ref(null)
+let headerObserver
 const user = ref(null)
 const avatarFailed = ref(false)
 
@@ -27,21 +29,26 @@ function login() {
   window.location.href = '/oauth2/authorization/github'
 }
 
-onMounted(loadUser)
+onMounted(() => {
+  loadUser()
+  headerObserver = new ResizeObserver(() => document.documentElement.style.setProperty('--app-header-height', `${header.value.getBoundingClientRect().height}px`))
+  headerObserver.observe(header.value)
+})
+onBeforeUnmount(() => headerObserver?.disconnect())
 </script>
 
 <template>
-  <header class="header">
-    <div class="header-inner">
-      <router-link to="/" class="brand">TechStack Agent</router-link>
+  <header ref="header" class="header">
+    <div class="header-inner page-container">
+      <router-link to="/" class="brand site-brand">DevGuide<span aria-hidden="true"> / </span></router-link>
       <div class="right">
-        <router-link to="/" class="nav-link">技术栈</router-link>
+        <router-link to="/stacks" class="nav-link">技术栈</router-link>
         <template v-if="user">
           <img
             v-if="user.avatarUrl && !avatarFailed"
             :src="user.avatarUrl"
             class="avatar"
-            alt="avatar"
+            :alt="`${user.username} 的头像`"
             @error="onAvatarError"
           />
           <span v-else class="avatar avatar-fallback">{{ initial }}</span>
@@ -56,23 +63,23 @@ onMounted(loadUser)
 <style scoped>
 .header {
   border-bottom: 1px solid rgba(148, 163, 184, 0.14);
-  background: var(--color-background);
+  background: #f7f7f5ed;
   position: sticky;
   top: 0;
-  z-index: 10;
+  z-index: 40;
 }
 .header-inner {
-  max-width: 1080px;
+  min-height: 76px;
   margin: 0 auto;
-  padding: var(--space-md) var(--space-lg);
+  padding-block: var(--space-md);
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 .brand {
-  font-family: var(--font-mono);
-  font-weight: 700;
-  font-size: 16px;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 23px;
   color: var(--color-foreground);
   text-decoration: none;
 }
@@ -121,4 +128,5 @@ onMounted(loadUser)
   background: var(--color-accent);
   color: var(--color-on-accent);
 }
+@media (max-width: 600px) { .header-inner { min-height: 68px; gap: 12px; flex-wrap: wrap; } .right { gap: 12px; } .username { display: none; } }
 </style>

@@ -1,140 +1,56 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import StackCard from '../components/StackCard.vue'
-import { filterStacks, filterByCategory } from '../utils/filter'
-import { categoryLabel } from '../utils/categories'
-
-const router = useRouter()
-const route = useRoute()
-const stacks = ref([])
-const keyword = ref('')
-const loading = ref(true)
-const error = ref('')
-const authenticated = ref(false)
-const loginPrompt = ref(false)
-
-const activeCategory = computed(() => route.query.category || '')
-
-const filtered = computed(() =>
-  filterStacks(filterByCategory(stacks.value, activeCategory.value), keyword.value)
-)
-const trimmedKeyword = computed(() => keyword.value.trim())
-// 输入非空且无本地匹配时，展示「联网查询」入口（任意技术栈，不限于预置清单）
-const showWebSearch = computed(() => !loading.value && trimmedKeyword.value !== '' && filtered.value.length === 0)
-
-async function load() {
-  loading.value = true
-  error.value = ''
-  try {
-    const authRes = await fetch('/api/auth/me')
-    if (authRes.ok) authenticated.value = Boolean((await authRes.json()).authenticated)
-    const res = await fetch('/api/v1/showcase/tech-stacks')
-    if (!res.ok) throw new Error(`加载失败 (${res.status})`)
-    stacks.value = await res.json()
-  } catch (e) {
-    error.value = e.message
-  } finally {
-    loading.value = false
-  }
-}
-
-function searchArbitrary() {
-  const k = trimmedKeyword.value
-  if (!k) return
-  if (!authenticated.value) {
-    loginPrompt.value = true
-    return
-  }
-  router.push({ name: 'stack-detail', params: { name: k } })
-}
-
-function onEnter() {
-  if (showWebSearch.value) searchArbitrary()
-}
-
-onMounted(load)
+import { computed } from 'vue'
+import { useCatalog } from '../composables/useCatalog'
+import { GROUPS } from '../utils/catalog'
+import CatalogSidebar from '../components/catalog/CatalogSidebar.vue'
+import SearchScope from '../components/catalog/SearchScope.vue'
+import StackRow from '../components/catalog/StackRow.vue'
+import CatalogIcon from '../components/catalog/CatalogIcon.vue'
+import '../styles/catalog.css'
+const catalog = useCatalog()
+const { route, stacks, loading, error, loginPrompt, authenticated, keyword, direction, group, scope, scopeOptions, results, page, pages, pageItems, pageSize, counts, boards, showWebSearch, changeScope, navigate, changePage, load, discover } = catalog
+const list = computed(() => Boolean(keyword.value.trim() || group.value))
+const title = computed(() => group.value ? GROUPS[group.value].name : direction.value?.name || '探索技术栈')
+const intro = computed(() => group.value ? GROUPS[group.value].desc : direction.value?.intro || '从一个学习方向，找到你的下一步。')
+const summary = computed(() => list.value ? `${keyword.value.trim() ? (scopeOptions.value.find(item => item.value === scope.value)?.label || '全部技术') : title.value} · ${results.value.length} 项技术` : `${boards.value.length} 个${direction.value ? '用途分组' : '学习方向'} · ${direction.value ? new Set(boards.value.flatMap(board => board.items.map(stack => stack.name))).size : stacks.value.length} 项已收录技术`)
 </script>
-
 <template>
-  <section>
-    <header class="hero">
-      <h1>技术栈学习 Agent</h1>
-      <p class="subtitle">查找技术栈的官方文档与 GitHub star Top10 项目，生成带引用的学习引导。</p>
-      <input
-        v-model="keyword"
-        class="input search"
-        placeholder="搜索技术栈，如 React、Spring Boot、PyTorch…"
-        @keyup.enter="onEnter"
-      />
-    </header>
-
-    <p v-if="loading" class="state">加载中…</p>
-    <p v-else-if="error" class="state error">{{ error }}</p>
-
+  <section class="catalog">
+    <div class="breadcrumb-row">
+      <CatalogSidebar :direction="direction?.id || 'overview'" :group="group" :counts="counts" @navigate="navigate" />
+      <nav class="catalog-breadcrumbs" aria-label="当前位置"><router-link :to="{ name: 'stacks' }">技术栈目录</router-link><span aria-hidden="true">/</span><router-link v-if="group" :to="{ name: 'stacks', query: { direction: direction.id } }">{{ direction.name }}</router-link><span v-if="group" aria-hidden="true">/</span><span>{{ group ? GROUPS[group].name : direction?.name || '总览' }}</span></nav>
+    </div>
+    <header class="catalog-hero"><div><h1>{{ title }}</h1><p>{{ intro }}</p></div><div class="hero-art" aria-hidden="true"><span class="art-line"></span><span class="art-node node-a">{ }</span><span class="art-node node-b">↗</span><span class="art-node node-c">&lt;/&gt;</span></div></header>
+    <div class="search-bar" role="search" aria-label="搜索技术栈">
+      <CatalogIcon name="search" /><label class="sr-only" for="stack-search">技术名称或用途</label>
+      <input id="stack-search" v-model="keyword" type="search" placeholder="搜索技术名称或用途…" autocomplete="off" />
+      <SearchScope :model-value="scope" :options="scopeOptions" @update:model-value="changeScope" />
+    </div>
+    <p v-if="loading" class="catalog-state" role="status">加载目录中…</p>
+    <div v-else-if="error" class="catalog-state" role="alert"><p>{{ error }}</p><button class="catalog-action" @click="load">重新加载</button></div>
     <template v-else>
-      <div v-if="activeCategory" class="category-bar">
-        <span class="category-current">分类：{{ categoryLabel(activeCategory) }}</span>
-        <button class="category-clear" @click="router.push({ name: 'stacks' })">显示全部</button>
-      </div>
-
-      <div v-if="showWebSearch" class="web-search">
-        <p class="web-search-hint">「{{ trimmedKeyword }}」暂未收录，可联网搜索官方文档与 GitHub 项目并生成学习引导。</p>
-        <button class="btn-primary" @click="searchArbitrary">
-          {{ authenticated ? `联网查询「${trimmedKeyword}」` : '登录后联网查询' }}
-        </button>
-        <p v-if="loginPrompt && !authenticated" class="login-prompt" role="status">
-          动态搜索会调用外部服务，请先登录。
-          <a href="/oauth2/authorization/github">使用 GitHub 登录</a>
-        </p>
-      </div>
-
-      <div v-else-if="!filtered.length" class="state">没有匹配的技术栈</div>
-      <div v-else class="grid">
-        <StackCard v-for="s in filtered" :key="s.id" :stack="s" />
+      <div class="content-toolbar"><p role="status" aria-live="polite">{{ summary }}</p><span>{{ list ? '展示顺序 · 名称' : direction ? '分组概览' : '目录总览' }}</span></div>
+      <div id="catalog-results">
+        <div v-if="!list" class="group-grid">
+          <section v-for="board in boards" :key="board.id" class="group-section">
+            <div class="group-heading"><div><h2><CatalogIcon :name="board.icon" />{{ board.name }}</h2><p>{{ board.desc }}</p></div><span class="group-count">{{ board.items.length }}</span></div>
+            <StackRow v-for="stack in board.items.slice(0, 4)" :key="stack.id || stack.name" :stack="stack" :return-to="route.fullPath" />
+            <p v-if="!board.items.length" class="group-empty">暂无已确认归属的技术</p>
+            <router-link class="more-link" :to="{ name: 'stacks', query: board.query }">{{ direction ? `查看全部 ${board.items.length} 项` : `探索${board.name}` }} <span aria-hidden="true">→</span></router-link>
+          </section>
+        </div>
+        <div v-else-if="!results.length" class="catalog-empty">
+          <CatalogIcon name="search" /><h2>{{ scope !== 'all' && keyword.trim() ? '当前范围没有匹配结果' : keyword.trim() ? '没有找到匹配的技术' : '这个分组还没有技术条目' }}</h2>
+          <template v-if="scope !== 'all' && keyword.trim()"><p>换到全部技术，继续找一找。</p><button class="catalog-action" @click="changeScope('all')">搜索全部技术</button></template>
+          <template v-else-if="showWebSearch"><p>可联网查询官方资料与开源项目。</p><button class="btn-primary" @click="discover">{{ authenticated ? `联网查询「${keyword.trim()}」` : '登录后联网查询' }}</button><p v-if="loginPrompt" class="login-prompt" role="status">动态搜索会调用外部服务，请先登录。<a href="/oauth2/authorization/github">使用 GitHub 登录</a></p></template>
+          <p v-else>可以通过全目录搜索查找已收录的技术。</p>
+        </div>
+        <template v-else>
+          <div class="list-head"><span>技术 / 用途</span><span>技术标签</span></div>
+          <div class="result-list"><StackRow v-for="stack in pageItems" :key="stack.id || stack.name" :stack="stack" full :return-to="route.fullPath" /></div>
+          <nav class="catalog-pagination" aria-label="结果分页"><span>共 {{ results.length }} 项 · 每页 {{ pageSize }} 项</span><div><button :disabled="page === 1" @click="changePage(page - 1)">上一页</button><span>{{ page }} / {{ pages }}</span><button :disabled="page === pages" @click="changePage(page + 1)">下一页</button></div></nav>
+        </template>
       </div>
     </template>
   </section>
 </template>
-
-<style scoped>
-.hero { margin: var(--space-lg) 0 var(--space-xl); text-align: center; }
-.hero h1 { margin: 0 0 var(--space-sm); font-size: 28px; }
-.subtitle { margin: 0 auto var(--space-lg); max-width: 520px; color: var(--color-muted-foreground); font-size: 15px; }
-.search { max-width: 480px; margin: 0 auto; }
-.state { text-align: center; color: var(--color-muted-foreground); padding: var(--space-2xl) 0; }
-.error { color: var(--color-destructive); }
-.web-search {
-  text-align: center;
-  padding: var(--space-2xl) 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-md);
-}
-.web-search-hint { margin: 0; color: var(--color-muted-foreground); font-size: 15px; }
-.login-prompt { margin: 0; color: var(--color-muted-foreground); font-size: 14px; }
-.category-bar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-md);
-  margin-bottom: var(--space-lg);
-}
-.category-current { font-size: 14px; color: var(--color-foreground); font-family: var(--font-mono); }
-.category-clear {
-  background: transparent;
-  border: 1px solid var(--color-border);
-  color: var(--color-muted-foreground);
-  border-radius: var(--radius-sm);
-  padding: 4px 12px;
-  font-size: 13px;
-  transition: color 180ms ease, border-color 180ms ease;
-}
-.category-clear:hover { color: var(--color-foreground); border-color: var(--color-accent); }
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: var(--space-md);
-}
-</style>

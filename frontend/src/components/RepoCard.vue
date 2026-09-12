@@ -27,11 +27,11 @@ defineProps({ repo: { type: Object, required: true } })
   display: block;
   text-decoration: none;
   color: var(--color-card-foreground);
-  transition: border-color 200ms ease, transform 200ms ease;
+
 }
 .repo-card:hover {
   border-color: var(--color-accent);
-  transform: translateY(-1px);
+
   text-decoration: none;
 }
 .repo-head {
@@ -46,8 +46,9 @@ defineProps({ repo: { type: Object, required: true } })
   font-size: 14px;
   color: var(--color-accent);
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+
+  overflow-wrap: anywhere;
+  min-width: 0;
 }
 .repo-stars {
   display: inline-flex;
@@ -62,10 +63,7 @@ defineProps({ repo: { type: Object, required: true } })
   font-size: 13px;
   color: var(--color-muted-foreground);
   line-height: 1.5;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+
 }
 .lang {
   font-size: 12px;

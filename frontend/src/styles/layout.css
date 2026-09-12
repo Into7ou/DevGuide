@@ -1,0 +1,40 @@
+/* Shared layout and control rules. Page-specific composition stays local. */
+:root { --content-width: 1200px; }
+html { color-scheme: light; scroll-padding-top: 100px; }
+.page-container { width: 100%; max-width: var(--content-width); margin-inline: auto; padding-inline: var(--space-lg); }
+.content-page { padding-block: var(--space-xl) var(--space-2xl); min-height: 70vh; }
+.site-brand { display: inline-flex; align-items: center; gap: 10px; color: var(--color-foreground); font-size: 21px; font-weight: 650; text-decoration: none; }
+.site-brand span { color: var(--color-accent); font-family: var(--font-mono); }
+.card { min-width: 0; overflow-wrap: anywhere; border-color: var(--color-border); }
+a.card { transition: border-color 180ms ease; }
+.btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 16px; min-height: 44px; text-decoration: none; }
+.btn-primary:hover { text-decoration: none; }
+button, input, summary { min-height: 44px; }
+input { min-width: 0; }
+img { max-width: 100%; }
+h1, h2, h3, p, a { overflow-wrap: anywhere; }
+pre { overflow-x: auto; max-width: 100%; }
+.back-link { display: inline-block; padding-block: 8px; font-size: 14px; }
+.skip-link { position: absolute; left: -10000px; }
+.skip-link:focus { left: 16px; top: 16px; z-index: 100; padding: 12px; background: var(--color-card); }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+html.home-snap { scroll-snap-type: y proximity; scroll-padding-top: 77px; }
+@media (max-width: 800px), (max-height: 700px), (prefers-reduced-motion: reduce) { html.home-snap { scroll-snap-type: none; } }
+
+/* Keep each page's layout stable while the outgoing page fades away. */
+html.home-scroll { scroll-behavior: smooth; scroll-padding-top: 77px; }
+.route-stage { position: relative; isolation: isolate; }
+.route-page { width: 100%; }
+.page-enter-active { transition: opacity 480ms ease-in-out; }
+.page-leave-active {
+  position: absolute;
+  inset: 0 0 auto;
+  pointer-events: none;
+  transition: opacity 320ms ease-out;
+}
+.page-enter-from, .page-leave-to { opacity: 0; }
+@media (prefers-reduced-motion: reduce) {
+  html.home-scroll { scroll-behavior: auto; }
+  .page-enter-active, .page-leave-active { transition: none; }
+}

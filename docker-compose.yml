@@ -26,7 +26,7 @@ services:
     logging: *service-logging
 
   backend:
-    image: ghcr.io/into7ou/devguide-backend:${IMAGE_TAG:-v0.7.0}
+    image: ghcr.io/into7ou/devguide-backend:${IMAGE_TAG:-v0.8.0}
     container_name: devguide-backend
     profiles: ["app"]
     restart: unless-stopped
@@ -65,7 +65,7 @@ services:
     logging: *service-logging
 
   frontend:
-    image: ghcr.io/into7ou/devguide-frontend:${IMAGE_TAG:-v0.7.0}
+    image: ghcr.io/into7ou/devguide-frontend:${IMAGE_TAG:-v0.8.0}
     container_name: devguide-frontend
     profiles: ["app"]
     restart: unless-stopped

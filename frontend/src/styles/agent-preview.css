@@ -1,0 +1,140 @@
+.opening {
+  position: relative;
+  padding: 28px;
+  background: #ffffffab;
+  border: 1px solid #ffffffd9;
+  border-radius: 20px;
+  box-shadow: 0 30px 90px #3b52731a;
+}
+
+.demo-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.question-card {
+  font-size: clamp(22px, 2.2vw, 30px);
+  line-height: 1.55;
+  letter-spacing: 0;
+  margin: 24px 0;
+}
+
+.agent-steps {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.agent-steps li {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 10px 0 18px;
+  color: var(--muted);
+  transition: color .5s ease;
+}
+
+.agent-steps li:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 28px;
+  bottom: -7px;
+  width: 1px;
+  background: var(--line);
+}
+
+.step-dot {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 13px;
+  margin-top: 5px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  transition: background .5s, box-shadow .5s;
+}
+
+.agent-steps strong {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.agent-steps small {
+  display: block;
+  font-size: 12px;
+  margin-top: 5px;
+}
+
+.agent-steps .is-active {
+  color: #245ba7;
+}
+
+.is-active .step-dot {
+  background: #356fe5;
+  border-color: #356fe5;
+  box-shadow: 0 0 0 5px #356fe518;
+}
+
+.is-done .step-dot {
+  background: #97b6dc;
+  border-color: #97b6dc;
+}
+
+.demo-result {
+  border-top: 1px solid var(--line);
+  padding-top: 15px;
+  opacity: 1;
+  transition: background .6s;
+}
+
+.demo-result.is-ready {
+  background: #edf3fb;
+}
+
+.demo-result>span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.demo-result p {
+  font-size: 15px;
+  margin: 8px 0 0;
+}
+
+.demo-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 22px;
+  color: var(--muted);
+}
+
+.demo-controls small {
+  font-size: 10px;
+}
+
+
+sup {
+  color: var(--color-accent);
+}
+
+@media (max-width: 800px) {
+  .opening {
+    padding: 24px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .agent-steps li,
+  .step-dot,
+  .demo-result {
+    transition: none;
+  }
+}

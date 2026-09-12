@@ -1,11 +1,25 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, onMounted, watch, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { getTags } from '../utils/catalog'
+import '../styles/catalog.css'
 import RepoCard from '../components/RepoCard.vue'
 import LearnPanel from '../components/LearnPanel.vue'
 
 const route = useRoute()
+const router = useRouter()
+const returnTo = computed(() => {
+  const from = route.query.from
+  return typeof from === 'string' && /^\/stacks(?:\?|$)/.test(from) ? from : '/stacks'
+})
+function returnToCatalog(event) {
+  if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return
+  event.preventDefault()
+  if (window.history.state?.back === returnTo.value) router.back()
+  else router.push(returnTo.value)
+}
 const overview = ref(null)
+const tags = computed(() => overview.value ? getTags(overview.value) : [])
 const loading = ref(true)
 const error = ref('')
 const authenticated = ref(false)
@@ -37,6 +51,7 @@ watch(() => route.params.name, (n) => { if (n) load(n) })
 
 <template>
   <section>
+    <a class="back-link" :href="returnTo" @click="returnToCatalog">← 技术栈目录</a>
     <p v-if="loading" class="state">加载中…</p>
     <p v-else-if="error" class="state error">{{ error }}</p>
 
@@ -44,6 +59,8 @@ watch(() => route.params.name, (n) => { if (n) load(n) })
       <header class="detail-head">
         <h1 class="name">{{ overview.name }}</h1>
         <p v-if="overview.description" class="desc">{{ overview.description }}</p>
+        <span class="tech-tag-label">技术标签</span>
+        <div class="tech-tags"><span v-for="tag in tags" :key="tag">{{ tag }}</span><span v-if="!tags.length">分类待确认</span></div>
       </header>
 
       <section v-if="overview.officialDocUrl || overview.docKeyPages?.length" class="section">
@@ -85,10 +102,10 @@ watch(() => route.params.name, (n) => { if (n) load(n) })
 .section { margin-bottom: var(--space-2xl); }
 .section h2 { margin: 0 0 var(--space-md); font-size: 18px; }
 .doc-links { display: flex; flex-direction: column; gap: var(--space-sm); }
-.doc-link { font-size: 14px; word-break: break-all; }
+.doc-link { font-size: 14px; overflow-wrap: anywhere; }
 .repo-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
   gap: var(--space-md);
 }
 .login-card { text-align: center; padding: var(--space-xl); }

@@ -13,7 +13,7 @@
 
     <groupId>com.techstack</groupId>
     <artifactId>devguide</artifactId>
-    <version>0.7.0</version>
+    <version>0.8.0</version>
     <name>DevGuide</name>
     <description>面向开发者的技术栈学习 Agent</description>
 

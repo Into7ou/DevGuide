@@ -192,4 +192,5 @@ blockquote { margin: var(--space-sm) 0; padding-left: var(--space-sm); border-le
 .input-row .input { flex: 1; min-width: 0; }
 .btn-primary { flex-shrink: 0; }
 .session-note { margin-bottom: 0; font-size: 12px; }
+@media (max-width: 600px) { .input-row { flex-direction: column; } .turn-header { flex-wrap: wrap; } .learn-panel { padding: var(--space-md); } }
 </style>

@@ -47,3 +47,6 @@ logs/
 
 # EdgeOne CLI local authentication and deployment state
 .edgeone/
+
+#skill
+.agents/skills
